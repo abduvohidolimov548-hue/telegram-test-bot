@@ -1,4 +1,4 @@
-import os, json, time, asyncio
+import os, json, time, asyncio, threading
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler,
@@ -220,13 +220,15 @@ async def start_http_server():
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
     print(f"HTTP server running on port {port}")
-    return runner
+
+def run_http_server_thread():
+    asyncio.run(start_http_server())
 
 # ================= MAIN =================
-async def main():
+def main():
     bot_app = ApplicationBuilder().token(TOKEN).build()
 
-    # Handlers
+    # Handlerlar
     bot_app.add_handler(CommandHandler("start", start))
     bot_app.add_handler(CommandHandler("admin", admin))
     bot_app.add_handler(CallbackQueryHandler(check_sub, pattern="check_sub"))
@@ -234,12 +236,11 @@ async def main():
     bot_app.add_handler(CallbackQueryHandler(admin_buttons))
     bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, messages))
 
-    # HTTP server
-    await start_http_server()
+    # HTTP serverni alohida threadda ishga tushiramiz
+    threading.Thread(target=run_http_server_thread, daemon=True).start()
 
     # Telegram bot polling
-    await bot_app.run_polling(close_loop=False)
+    bot_app.run_polling(close_loop=False)
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    main()
